@@ -1,6 +1,8 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Video } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -11,14 +13,13 @@ const GoogleIcon = () => (
   </svg>
 );
 
-import { useEffect } from 'react';
-import { useAuthStore } from '../store/authStore';
 
 export default function LoginPage() {
+
   const [loading, setLoading] = useState(false);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const loadingAuth = useAuthStore((s) => s.loading);
-  const navigate = typeof window !== 'undefined' ? (await import('react-router-dom')).useNavigate() : () => {};
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!loadingAuth && isAuthenticated) {
