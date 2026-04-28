@@ -31,7 +31,7 @@ export default function AppRouter() {
         <Route path="/history" element={<PrivateRoute><HistoryPage /></PrivateRoute>} />
 
         {/* Redirección raíz */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -11,8 +11,20 @@ const GoogleIcon = () => (
   </svg>
 );
 
+import { useEffect } from 'react';
+import { useAuthStore } from '../store/authStore';
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const loadingAuth = useAuthStore((s) => s.loading);
+  const navigate = typeof window !== 'undefined' ? (await import('react-router-dom')).useNavigate() : () => {};
+
+  useEffect(() => {
+    if (!loadingAuth && isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, loadingAuth, navigate]);
 
   const handleLogin = () => {
     setLoading(true);
