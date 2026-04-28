@@ -27,9 +27,10 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, loadingAuth, navigate]);
 
+  const API_URL = import.meta.env.VITE_API_URL || '';
   const handleLogin = () => {
     setLoading(true);
-    window.location.href = 'https://backend-socialmedia-ixsm.onrender.com/oauth2/authorization/google';
+    window.location.href = `${API_URL}/oauth2/authorization/google`;
   };
 
   return (
