@@ -6,12 +6,12 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false,
+  withCredentials: true,
 });
 
 // Request interceptor — agrega el token en cada petición autenticada
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('jwt_token');
+  const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -25,8 +25,9 @@ api.interceptors.response.use(
     const code = error.response?.data?.code;
 
     if (code === 'TOKEN_EXPIRADO' || code === 'TOKEN_INVALIDO') {
-      localStorage.removeItem('jwt_token');
-      // Redirigir al login — ajusta según tu router
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Redirigir al login
       window.location.href = '/login';
     }
 
