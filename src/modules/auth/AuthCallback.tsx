@@ -42,26 +42,23 @@ export default function AuthCallback() {
       }
     };
 
-    fetchToken();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error')) {
+      navigate('/login?error=oauth', { replace: true });
+      return;
+    }
+    // El backend ya seteó cookies HttpOnly, simplemente redirigimos
+    navigate('/dashboard', { replace: true });
   }, [navigate]);
 
   return (
     <div style={{
       minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 16,
-      background: 'var(--bg)',
-      color: 'var(--text-2)',
-      fontFamily: 'var(--font-body)',
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center'
     }}>
-      <div className="spinner spinner-lg" style={{ color: 'var(--accent)' }} />
-      <p style={{ fontSize: 15 }}>Iniciando sesión...</p>
-      {error && (
-        <p style={{ fontSize: 13, color: 'var(--error)' }}>{error}</p>
-      )}
+      <span>Procesando autenticación...</span>
     </div>
   );
 }

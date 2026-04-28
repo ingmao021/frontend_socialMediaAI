@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Video, CheckCircle2, Zap, AlertCircle, Wand2, History, ChevronRight } from 'lucide-react';
@@ -11,12 +12,30 @@ import PublishModal from '../modules/youtube/PublishModal';
 export default function DashboardPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const loading = useAuthStore((s) => s.loading);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [publishTarget, setPublishTarget] = useState<VideoType | null>(null);
 
   useEffect(() => {
-    listVideos().then(setVideos).catch(() => {});
-  }, []);
+    if (!loading && !isAuthenticated) {
+      navigate('/login', { replace: true });
+    }
+  }, [loading, isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      listVideos().then(setVideos).catch(() => {});
+    }
+  }, [isAuthenticated]);
+
+  if (loading) {
+    return <div>Cargando...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const firstName = user?.name?.split(' ')[0] ?? 'Usuario';
   const total = videos.length;

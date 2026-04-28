@@ -8,11 +8,11 @@ import AuthCallback from '../modules/auth/AuthCallback';
 import AuthError from '../modules/auth/AuthError';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const user = useAuthStore((s) => s.user);
   const loading = useAuthStore((s) => s.loading);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   if (loading) return <div>Cargando...</div>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 

@@ -1,6 +1,6 @@
+
 import { useState } from 'react';
 import { Video } from 'lucide-react';
-import { getGoogleLoginUrl } from '../api/auth.api';
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -14,14 +14,9 @@ const GoogleIcon = () => (
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     setLoading(true);
-    try {
-      const url = await getGoogleLoginUrl();
-      window.location.href = url;
-    } catch {
-      setLoading(false);
-    }
+    window.location.href = 'https://backend-socialmedia-ixsm.onrender.com/oauth2/authorization/google';
   };
 
   return (
