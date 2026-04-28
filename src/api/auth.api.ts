@@ -1,10 +1,6 @@
+
 import api from './client';
 import type { User } from '../types/auth.types';
-
-export const getGoogleLoginUrl = async (): Promise<string> => {
-  const { data } = await api.get<{ url: string }>('/api/auth/google-url');
-  return data.url;
-};
 
 export const getCurrentUser = async (): Promise<User> => {
   const { data } = await api.get<User>('/api/auth/me');
