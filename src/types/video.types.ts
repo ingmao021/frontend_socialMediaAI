@@ -1,28 +1,23 @@
-export type VideoStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'ERROR';
+export type VideoStatus = 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
-export interface Video {
-  id: number;
-  userId: number;
-  title: string;
-  description: string | null;
+export interface VideoResponse {
+  id: string; // UUID as string
   prompt: string;
+  durationSeconds: number;
   status: VideoStatus;
-  videoUrl: string | null;
-  googleJobId: string | null;
+  signedUrl: string | null;
+  signedUrlExpiresAt: string | null;
   errorMessage: string | null;
-  createdAt: string;   // ISO-8601, ej: "2024-04-26T14:00:00"
+  createdAt: string;
   updatedAt: string;
 }
 
-// Body enviado al POST /api/videos/generate
-export interface GenerateVideoRequest {
-  title: string;        // requerido, max 200 caracteres
-  description?: string; // opcional, max 500 caracteres
-  prompt: string;       // requerido, entre 5 y 1000 caracteres
+export interface VideoStatusResponse {
+  status: VideoStatus;
+  signedUrl: string | null;
 }
 
-// Notas importantes:
-// - La duración del video es fija: 5 segundos (definida en el backend)
-// - El aspect ratio es fijo: 16:9 (definido en el backend)
-// - La generación es ASÍNCRONA: el status inicial es PENDING/PROCESSING
-//   y el backend lo actualiza automáticamente mediante polling a Google AI
+export interface GenerateVideoRequest {
+  prompt: string;
+  durationSeconds: 4 | 6 | 8; // literal type — prevents invalid values at compile time
+}

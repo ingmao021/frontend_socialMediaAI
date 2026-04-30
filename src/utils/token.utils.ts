@@ -1,1 +1,0 @@
-// Archivo eliminado: ya no se usa manejo de tokens en frontend.

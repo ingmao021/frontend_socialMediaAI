@@ -1,13 +1,21 @@
-export interface User {
-  id: number;
+import type { UserResponse } from './user.types';
+
+export interface RegisterRequest {
   name: string;
   email: string;
-  picture: string;
+  password: string;
 }
 
-export interface TokenDebugResponse {
-  valid: boolean;
-  userId?: number;
-  email?: string;
-  error?: string;
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface GoogleLoginRequest {
+  idToken: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: UserResponse;
 }

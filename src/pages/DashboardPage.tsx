@@ -1,169 +1,179 @@
+import { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
+import axios from 'axios';
+import { useAuth } from '../hooks/useAuth';
+import { useVideoPolling } from '../hooks/useVideoPolling';
+import { videoService } from '../services/videoService';
+import { GenerateVideoForm } from '../components/GenerateVideoForm';
+import { VideoCard } from '../components/VideoCard';
+import type { GenerateVideoRequest, VideoResponse } from '../types/video.types';
+import type { ApiError, PageResponse } from '../types/api.types';
 
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Video, CheckCircle2, Zap, AlertCircle, Wand2, History, ChevronRight } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
-import { listVideos } from '../api/videos.api';
-import type { Video as VideoType } from '../types/video.types';
-import Header from '../modules/ui/Header';
-import VideoCard from '../modules/video/VideoCard';
-import PublishModal from '../modules/youtube/PublishModal';
+const PAGE_SIZE = 6;
 
-export default function DashboardPage() {
-  const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
-  const loading = useAuthStore((s) => s.loading);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const [videos, setVideos] = useState<VideoType[]>([]);
-  const [publishTarget, setPublishTarget] = useState<VideoType | null>(null);
+export function DashboardPage() {
+  const { user, refreshUser } = useAuth();
+
+  const [videosData, setVideosData] = useState<PageResponse<VideoResponse> | null>(null);
+  const [page, setPage] = useState(0);
+  const [loadingList, setLoadingList] = useState(true);
+  const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
+
+  const quotaReached = (user?.videosGenerated ?? 0) >= (user?.videosLimit ?? 2);
+
+  // Load video list
+  const loadVideos = useCallback(
+    async (p: number = page) => {
+      setLoadingList(true);
+      try {
+        const data = await videoService.listVideos(p, PAGE_SIZE);
+        setVideosData(data);
+      } catch {
+        toast.error('Error al cargar los videos.');
+      } finally {
+        setLoadingList(false);
+      }
+    },
+    [page],
+  );
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      navigate('/login', { replace: true });
-    }
-  }, [loading, isAuthenticated, navigate]);
+    loadVideos(page);
+  }, [page, loadVideos]);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      listVideos().then(setVideos).catch(() => {});
-    }
-  }, [isAuthenticated]);
+  // Polling for the most recently generated video
+  useVideoPolling({
+    videoId: pollingVideoId,
+    onComplete: () => {
+      toast.success('¡Video generado exitosamente!');
+      setPollingVideoId(null);
+      loadVideos(0);
+      setPage(0);
+      refreshUser();
+    },
+    onFailed: (msg) => {
+      toast.error(msg || 'Error al generar el video.');
+      setPollingVideoId(null);
+      loadVideos(page);
+    },
+  });
 
-  if (loading) {
-    return <div>Cargando...</div>;
+  async function handleGenerate(request: GenerateVideoRequest) {
+    try {
+      const video = await videoService.generateVideo(request);
+      toast.success('Video en cola de generación.');
+      setPollingVideoId(video.id);
+      // Refresh list to show the new PROCESSING video
+      await loadVideos(0);
+      setPage(0);
+      await refreshUser();
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const code = (err.response?.data as ApiError | undefined)?.code;
+        if (code === 'QUOTA_EXCEEDED') {
+          toast.error('Has alcanzado el límite de videos.');
+          refreshUser();
+        } else if (code === 'VALIDATION_ERROR') {
+          toast.error('Prompt o duración inválidos.');
+        } else {
+          toast.error('Error al generar el video.');
+        }
+      } else {
+        toast.error('Error de conexión.');
+      }
+    }
   }
 
-  if (!isAuthenticated) {
-    return null;
+  async function handleDelete(videoId: string) {
+    if (!confirm('¿Eliminar este video? Esta acción no se puede deshacer.')) return;
+
+    try {
+      await videoService.deleteVideo(videoId);
+      toast.success('Video eliminado.');
+      await loadVideos(page);
+      await refreshUser();
+    } catch {
+      toast.error('Error al eliminar el video.');
+    }
   }
 
-  const firstName = user?.name?.split(' ')[0] ?? 'Usuario';
-  const total = videos.length;
-  const completed = videos.filter((v) => v.status === 'COMPLETED').length;
-  const processing = videos.filter((v) => v.status === 'PROCESSING' || v.status === 'PENDING').length;
-  const errors = videos.filter((v) => v.status === 'ERROR').length;
-  const recents = videos.slice(0, 3);
+  const videos = videosData?.content ?? [];
+  const totalPages = videosData?.totalPages ?? 0;
 
   return (
-    <>
-      <Header />
-      <div className="page-wrapper">
-        <div className="page-content page-enter">
-
-          {/* Welcome */}
-          <div className="welcome-block">
-            {user?.picture ? (
-              <img className="welcome-avatar" src={user.picture} alt={user.name} />
-            ) : (
-              <div className="welcome-avatar" style={{
-                background: 'var(--accent)', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, fontWeight: 700, color: '#fff',
-              }}>
-                {firstName[0]}
-              </div>
-            )}
-            <div>
-              <div className="welcome-title">Hola, {firstName} 👋</div>
-              <div className="welcome-sub">Listo para crear algo increíble hoy</div>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon" style={{ background: 'rgba(99,102,241,0.12)' }}>
-                <Video size={20} color="#6366f1" />
-              </div>
-              <div>
-                <div className="stat-value">{total}</div>
-                <div className="stat-label">Videos generados</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon" style={{ background: 'rgba(16,185,129,0.12)' }}>
-                <CheckCircle2 size={20} color="#10b981" />
-              </div>
-              <div>
-                <div className="stat-value">{completed}</div>
-                <div className="stat-label">Completados</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon" style={{ background: 'rgba(245,158,11,0.12)' }}>
-                <Zap size={20} color="#f59e0b" />
-              </div>
-              <div>
-                <div className="stat-value">{processing}</div>
-                <div className="stat-label">En proceso</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon" style={{ background: 'rgba(239,68,68,0.12)' }}>
-                <AlertCircle size={20} color="#ef4444" />
-              </div>
-              <div>
-                <div className="stat-value">{errors}</div>
-                <div className="stat-label">Con error</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action cards */}
-          <div className="actions-grid">
-            <button className="action-card" onClick={() => navigate('/generate')}>
-              <div className="action-card-icon" style={{ background: 'rgba(99,102,241,0.15)' }}>
-                <Wand2 size={22} color="#818cf8" />
-              </div>
-              <div className="action-card-title">Generar nuevo video</div>
-              <div className="action-card-desc">Describe tu idea y la IA lo convertirá en un video en segundos.</div>
-              <div className="action-card-link" style={{ color: 'var(--accent)' }}>
-                Comenzar ahora <ChevronRight size={14} style={{ display: 'inline', verticalAlign: 'middle' }} />
-              </div>
-            </button>
-
-            <button className="action-card" onClick={() => navigate('/history')}>
-              <div className="action-card-icon" style={{ background: 'rgba(16,185,129,0.12)' }}>
-                <History size={22} color="#34d399" />
-              </div>
-              <div className="action-card-title">Ver historial</div>
-              <div className="action-card-desc">Revisa todos tus videos generados, descárgalos o publícalos en YouTube.</div>
-              <div className="action-card-link" style={{ color: '#34d399' }}>
-                Ver historial <ChevronRight size={14} style={{ display: 'inline', verticalAlign: 'middle' }} />
-              </div>
-            </button>
-          </div>
-
-          {/* Recent videos */}
-          {recents.length > 0 && (
-            <>
-              <div className="section-header">
-                <div>
-                  <div className="section-title">Recientes</div>
-                  <div className="section-sub">Tus últimos videos generados</div>
-                </div>
-                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/history')}>
-                  Ver todos
-                </button>
-              </div>
-              <div className="videos-grid">
-                {recents.map((v) => (
-                  <VideoCard
-                    key={v.id}
-                    video={v}
-                    onPublish={v.status === 'COMPLETED' ? setPublishTarget : undefined}
-                    onPlay={v.status === 'COMPLETED' && v.videoUrl ? (vid) => window.open(vid.videoUrl!, '_blank') : undefined}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+    <div>
+      <div className="dashboard-header">
+        <h1 className="dashboard-title">Dashboard</h1>
+        <p className="dashboard-subtitle">
+          Escribí un prompt y generá videos con IA
+        </p>
       </div>
 
-      {publishTarget && (
-        <PublishModal video={publishTarget} onClose={() => setPublishTarget(null)} />
+      <GenerateVideoForm
+        onGenerate={handleGenerate}
+        disabled={!!pollingVideoId}
+        quotaReached={quotaReached}
+        videosGenerated={user?.videosGenerated ?? 0}
+        videosLimit={user?.videosLimit ?? 2}
+      />
+
+      <div className="video-list-header">
+        <h2 className="video-list-title">Tus videos</h2>
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={() => loadVideos(page)}
+          disabled={loadingList}
+        >
+          {loadingList ? <div className="spinner spinner-sm" /> : '↻ Recargar'}
+        </button>
+      </div>
+
+      {loadingList && videos.length === 0 ? (
+        <div className="text-center mt-1">
+          <div className="spinner" style={{ margin: '2rem auto' }} />
+        </div>
+      ) : videos.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">🎬</div>
+          <p className="empty-state-text">
+            Aún no generaste ningún video. ¡Probá con tu primer prompt!
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="video-grid">
+            {videos.map((video) => (
+              <VideoCard
+                key={video.id}
+                video={video}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button
+                className="btn btn-secondary pagination-btn"
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+              >
+                ← Anterior
+              </button>
+              <span className="pagination-info">
+                {page + 1} / {totalPages}
+              </span>
+              <button
+                className="btn btn-secondary pagination-btn"
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+              >
+                Siguiente →
+              </button>
+            </div>
+          )}
+        </>
       )}
-    </>
+    </div>
   );
 }

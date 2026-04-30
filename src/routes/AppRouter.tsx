@@ -1,38 +1,25 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
-import LoginPage from '../pages/LoginPage';
-import DashboardPage from '../pages/DashboardPage';
-import GeneratePage from '../pages/GeneratePage';
-import HistoryPage from '../pages/HistoryPage';
-import AuthCallback from '../modules/auth/AuthCallback';
-import AuthError from '../modules/auth/AuthError';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ProtectedRoute } from '../components/ProtectedRoute';
+import { LoginPage } from '../pages/LoginPage';
+import { RegisterPage } from '../pages/RegisterPage';
+import { DashboardPage } from '../pages/DashboardPage';
+import { ProfilePage } from '../pages/ProfilePage';
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const loading = useAuthStore((s) => s.loading);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-
-  if (loading) return <div>Cargando...</div>;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
-
-export default function AppRouter() {
+export function AppRouter() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Rutas públicas */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/auth/error" element={<AuthError />} />
+    <Routes>
+      {/* Public routes — no header */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
 
-        {/* Rutas protegidas */}
-        <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-        <Route path="/generate" element={<PrivateRoute><GeneratePage /></PrivateRoute>} />
-        <Route path="/history" element={<PrivateRoute><HistoryPage /></PrivateRoute>} />
+      {/* Protected routes — with header via ProtectedRoute layout */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+      </Route>
 
-        {/* Redirección raíz */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+      {/* Catch-all: redirect to dashboard (ProtectedRoute handles auth) */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 }
