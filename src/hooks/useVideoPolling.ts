@@ -90,13 +90,29 @@ export function useVideoPolling(
         }
         // If still PROCESSING, keep polling
       } catch (err: unknown) {
-        if (axios.isAxiosError(err) && err.response?.status === 404) {
-          cleanup();
-          setIsPolling(false);
-          setError('Video no encontrado.');
+        if (axios.isAxiosError(err)) {
+          const statusCode = err.response?.status;
+          if (statusCode === 404) {
+            cleanup();
+            setIsPolling(false);
+            setError('Video no encontrado.');
+            onFailedRef.current?.('Video no encontrado.');
+            return;
+          }
+
+          // Si es un error del servidor (5xx) paramos el polling y notificamos
+          if (statusCode && statusCode >= 500 && statusCode < 600) {
+            cleanup();
+            setIsPolling(false);
+            setError('Error en el servidor al consultar el estado del video. Intentá nuevamente más tarde.');
+            onFailedRef.current?.('Error en el servidor al consultar el estado del video.');
+            console.error('Server error while polling video status:', err);
+            return;
+          }
         }
-        // Otros errores de red: retry hasta timeout
-        console.error('Error al obtener estado del video:', err);
+
+        // Otros errores de red/transitorios: loguear y seguir reintentando hasta timeout
+        console.error('Error al obtener estado del video (reintento):', err);
       }
     };
 

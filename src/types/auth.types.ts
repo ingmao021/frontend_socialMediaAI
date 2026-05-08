@@ -12,7 +12,7 @@ export interface LoginRequest {
 }
 
 export interface GoogleLoginRequest {
-  idToken: string;
+  token: string;
 }
 
 export interface AuthResponse {

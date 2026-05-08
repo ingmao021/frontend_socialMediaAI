@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import axios from 'axios';
@@ -14,6 +14,13 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Debug: log exact origin para validar en Google Cloud Console
+  useEffect(() => {
+    const origin = window.location.origin;
+    console.log('🔑 Google OAuth Origin:', origin);
+    console.log('📝 Este origin debe estar en Google Cloud Console > Authorized JavaScript origins');
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,13 +55,20 @@ export function LoginPage() {
     }
   }
 
-  async function handleGoogleSuccess(idToken: string) {
+  async function handleGoogleSuccess(credentialResponse: CredentialResponse) {
+    const googleToken = credentialResponse.credential;
+    if (!googleToken) {
+      toast.error('No se recibió el token de Google. Intentá de nuevo.');
+      return;
+    }
+
     setError(null);
     setLoading(true);
     try {
-      await googleLogin(idToken);
+      await googleLogin(googleToken);
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
+      console.error('Google login error:', err);
       if (axios.isAxiosError(err)) {
         const code = (err.response?.data as ApiError | undefined)?.code;
         if (code === 'INVALID_GOOGLE_TOKEN') {
@@ -133,15 +147,13 @@ export function LoginPage() {
           <span>o</span>
         </div>
 
-        <div className="auth-google-wrapper">
+        <div className="auth-google-wrapper" style={{ display: 'flex', justifyContent: 'center' }}>
           <GoogleLogin
-            onSuccess={(cred) => {
-              if (cred.credential) handleGoogleSuccess(cred.credential);
-            }}
+            onSuccess={handleGoogleSuccess}
             onError={() => toast.error('Error al conectar con Google.')}
             theme="filled_black"
             size="large"
-            width="100%"
+            width={320}
             text="continue_with"
           />
         </div>
