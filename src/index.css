@@ -130,6 +130,8 @@ img, video { max-width: 100%; display: block; }
 
 .btn-google {
   background: #ffffff;
+  color: #374151;
+  border: 1px solid #e5e7eb;
 }
 
 .btn-google:hover {
