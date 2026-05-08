@@ -128,19 +128,6 @@ img, video { max-width: 100%; display: block; }
   border-color: var(--primary-500);
 }
 
-.btn-google {
-  background: #ffffff;
-  color: #374151;
-  border: 1px solid #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-   width: 100%;
-   padding: 0.7rem;
-   border-radius: var(--radius-md);
-}
-
 .btn-google:hover {
    background: #f9fafb;
    border-color: #d1d5db;
