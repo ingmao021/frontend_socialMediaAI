@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { VideoPlayer } from './VideoPlayer';
 import { videoService } from '../services/videoService';
 import type { VideoResponse } from '../types/video.types';
@@ -13,22 +14,49 @@ const STATUS_CONFIG = {
   FAILED: { label: 'Error', className: 'status-failed' },
 } as const;
 
+const isSignedUrlExpired = (expiresAt: string | null | undefined): boolean => {
+  if (!expiresAt) return true;
+  const expiry = new Date(expiresAt);
+  const margin = 60 * 60 * 1000; // 1 hora de margen
+  return Date.now() > expiry.getTime() - margin;
+};
+
 export function VideoCard({ video, onDelete }: VideoCardProps) {
-  const statusCfg = STATUS_CONFIG[video.status];
+  const [currentVideo, setCurrentVideo] = useState<VideoResponse>(video);
+
+  useEffect(() => {
+    setCurrentVideo(video);
+  }, [video]);
+
+  useEffect(() => {
+    const checkAndRefreshUrl = async () => {
+      if (currentVideo.status === 'COMPLETED' && isSignedUrlExpired(currentVideo.signedUrlExpiresAt)) {
+        try {
+          const updatedVideo = await videoService.getVideo(currentVideo.id);
+          setCurrentVideo(updatedVideo);
+        } catch (err) {
+          console.error('Error refreshing video URL', err);
+        }
+      }
+    };
+    checkAndRefreshUrl();
+  }, [currentVideo.status, currentVideo.signedUrlExpiresAt, currentVideo.id]);
+
+  const statusCfg = STATUS_CONFIG[currentVideo.status];
 
   return (
     <div className="video-card glass-card">
       <div className="video-card-preview">
-        {video.status === 'COMPLETED' && video.signedUrl ? (
-          <VideoPlayer src={video.signedUrl} />
-        ) : video.status === 'PROCESSING' ? (
+        {currentVideo.status === 'COMPLETED' && currentVideo.signedUrl ? (
+          <VideoPlayer src={currentVideo.signedUrl} />
+        ) : currentVideo.status === 'PROCESSING' ? (
           <div className="video-card-processing">
             <div className="spinner" />
             <span>Generando video…</span>
           </div>
-        ) : video.status === 'FAILED' ? (
+        ) : currentVideo.status === 'FAILED' ? (
           <div className="video-card-error">
-            <span>⚠️ {video.errorMessage || 'Error en la generación'}</span>
+            <span>⚠️ {currentVideo.errorMessage || 'Error en la generación'}</span>
           </div>
         ) : (
           // Caso cuando está COMPLETED pero sin signedUrl (debería ser muy raro due to backend)
@@ -43,13 +71,13 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
           <span className="status-dot" />
           {statusCfg.label}
         </div>
-        <p className="video-card-prompt" title={video.prompt}>
-          {video.prompt}
+        <p className="video-card-prompt" title={currentVideo.prompt}>
+          {currentVideo.prompt}
         </p>
         <div className="video-card-meta">
-          <span>{video.durationSeconds}s</span>
+          <span>{currentVideo.durationSeconds}s</span>
           <span>
-            {new Date(video.createdAt).toLocaleDateString('es-ES', {
+            {new Date(currentVideo.createdAt).toLocaleDateString('es-ES', {
               day: '2-digit',
               month: 'short',
               year: 'numeric',
@@ -59,7 +87,7 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
         <div className="video-card-actions">
           <button
             className="btn btn-danger btn-sm"
-            onClick={() => onDelete(video.id)}
+            onClick={() => onDelete(currentVideo.id)}
           >
             Eliminar
           </button>
@@ -68,15 +96,12 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
             className="btn btn-secondary btn-sm"
             onClick={async () => {
               try {
-                const status = await videoService.getVideoStatus(video.id);
-                const full = await videoService.getVideo(video.id);
-                // eslint-disable-next-line no-console
+                const status = await videoService.getVideoStatus(currentVideo.id);
+                const full = await videoService.getVideo(currentVideo.id);
                 console.info('[inspect] video status', status);
-                // eslint-disable-next-line no-console
                 console.info('[inspect] video full', full);
                 alert(`Status: ${status.status}\nsignedUrl: ${status.signedUrl ? 'present' : 'null'}\nRevisa la consola para más detalles.`);
               } catch (err) {
-                // eslint-disable-next-line no-console
                 console.error('Inspect error', err);
                 alert('Error inspeccionando el video. Verifica la consola.');
               }

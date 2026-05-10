@@ -5,8 +5,8 @@ import axios from 'axios';
 
 export interface UseVideoPollingOptions {
   videoId: string | null;
-  intervalMs?: number;   // default 5000
-  timeoutMs?: number;    // default 600000 (10 min — aligned with backend job timeout)
+  intervalMs?: number;   // default 10000
+  timeoutMs?: number;    // default 720000 (12 min)
   onComplete?: (signedUrl: string) => void;
   onFailed?: (errorMessage: string) => void;
 }
@@ -23,8 +23,8 @@ export function useVideoPolling(
 ): UseVideoPollingResult {
   const {
     videoId,
-    intervalMs = 5000,
-    timeoutMs = 600_000,
+    intervalMs = 10000,
+    timeoutMs = 720_000,
     onComplete,
     onFailed,
   } = options;
@@ -37,8 +37,11 @@ export function useVideoPolling(
   // Refs to hold the latest callbacks without triggering re-renders
   const onCompleteRef = useRef(onComplete);
   const onFailedRef = useRef(onFailed);
-  onCompleteRef.current = onComplete;
-  onFailedRef.current = onFailed;
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+    onFailedRef.current = onFailed;
+  }, [onComplete, onFailed]);
 
   // Reset state when videoId changes
   const reset = useCallback(() => {
@@ -50,12 +53,16 @@ export function useVideoPolling(
 
   useEffect(() => {
     if (!videoId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       reset();
       return;
     }
 
     // Fresh start for a new videoId
-    reset();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStatus(null);
+    setSignedUrl(null);
+    setError(null);
     setIsPolling(true);
 
     let intervalHandle: ReturnType<typeof setInterval> | null = null;
@@ -76,10 +83,8 @@ export function useVideoPolling(
 
         // Debug logging: muestra la respuesta completa del backend en consola
         try {
-          // eslint-disable-next-line no-console
           console.info('[video-poll] response for', videoId, response);
-        } catch (e) {
-          // eslint-disable-next-line no-console
+        } catch {
           console.info('[video-poll] response (string) for', videoId, String(response));
         }
 
@@ -101,7 +106,6 @@ export function useVideoPolling(
       } catch (err: unknown) {
         if (axios.isAxiosError(err)) {
           const statusCode = err.response?.status;
-          // eslint-disable-next-line no-console
           console.error('[video-poll] axios error', { videoId, statusCode, data: err.response?.data });
           if (statusCode === 404) {
             cleanup();
@@ -117,14 +121,12 @@ export function useVideoPolling(
             setIsPolling(false);
             setError('Error en el servidor al consultar el estado del video. Intentá nuevamente más tarde.');
             onFailedRef.current?.('Error en el servidor al consultar el estado del video.');
-            // eslint-disable-next-line no-console
             console.error('[video-poll] Server error while polling video status:', err);
             return;
           }
         }
 
         // Otros errores de red/transitorios: loguear y seguir reintentando hasta timeout
-        // eslint-disable-next-line no-console
         console.error('[video-poll] transient error (will retry):', { videoId, err });
       }
     };
