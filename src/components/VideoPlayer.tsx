@@ -1,8 +1,9 @@
 interface VideoPlayerProps {
   src: string;
+  onNetworkError?: () => void;
 }
 
-export function VideoPlayer({ src }: VideoPlayerProps) {
+export function VideoPlayer({ src, onNetworkError }: VideoPlayerProps) {
   return (
     <video
       key={src}
@@ -17,6 +18,7 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
           case MediaError.MEDIA_ERR_NETWORK:
             // La URL pudo haber expirado → refetch desde backend
             console.error('Error de red. Verificar si la URL expiró.');
+            if (onNetworkError) onNetworkError();
             break;
           case MediaError.MEDIA_ERR_DECODE:
             console.error('Error de decodificación del video.');

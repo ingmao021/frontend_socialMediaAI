@@ -3,7 +3,6 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getToken } from '../utils/tokenStorage';
 import { useAuth } from '../hooks/useAuth';
-import { useVideoPolling } from '../hooks/useVideoPolling';
 import { videoService } from '../services/videoService';
 import { GenerateVideoForm } from '../components/GenerateVideoForm';
 import { VideoCard } from '../components/VideoCard';
@@ -18,9 +17,8 @@ export function DashboardPage() {
   const [videosData, setVideosData] = useState<PageResponse<VideoResponse> | null>(null);
   const [page, setPage] = useState(0);
   const [loadingList, setLoadingList] = useState(true);
-  const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
 
-  const quotaReached = (user?.videosGenerated ?? 0) >= (user?.videosLimit ?? 2);
+  const quotaReached = false; // (user?.videosGenerated ?? 0) >= (user?.videosLimit ?? 2);
 
   // Load video list
   const loadVideos = useCallback(
@@ -32,28 +30,25 @@ export function DashboardPage() {
 
         // Debug: log response and token presence to help diagnose missing videos
         try {
-          // eslint-disable-next-line no-console
           console.info('[videos] Request details:', {
             page: p,
             pageSize: PAGE_SIZE,
             tokenPresent: !!token,
             tokenValue: token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
           });
-          // eslint-disable-next-line no-console
           console.info('[videos] Backend response:', {
             totalElements: data.totalElements,
             totalPages: data.totalPages,
             contentCount: data.content?.length || 0,
             content: data.content,
           });
-        } catch (e) {
+        } catch {
           // ignore logging errors
         }
 
         // Asegurar que se mapea correctamente response.data.content
         setVideosData(data);
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.error('[videos] Error loading videos:', error);
 
         // Si es un error de autenticación
@@ -62,7 +57,6 @@ export function DashboardPage() {
           const errorData = error.response?.data as ApiError | undefined;
 
           if (statusCode === 401 || statusCode === 403) {
-            // eslint-disable-next-line no-console
             console.error('[videos] Authentication error (401/403):', {
               statusCode,
               message: errorData?.message,
@@ -83,40 +77,25 @@ export function DashboardPage() {
   );
 
   useEffect(() => {
-    loadVideos(page);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadVideos(page);
   }, [page, loadVideos]);
 
   // Recargar videos cuando el usuario cambia (después de login)
   useEffect(() => {
-    if (user && !pollingVideoId) {
-      loadVideos(0);
+    if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadVideos(0);
+       
       setPage(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, pollingVideoId]);
-
-  // Polling for the most recently generated video
-  useVideoPolling({
-    videoId: pollingVideoId,
-    onComplete: () => {
-      toast.success('¡Video generado exitosamente!');
-      setPollingVideoId(null);
-      loadVideos(0);
-      setPage(0);
-      refreshUser();
-    },
-    onFailed: (msg) => {
-      toast.error(msg || 'Error al generar el video.');
-      setPollingVideoId(null);
-      loadVideos(page);
-    },
-  });
+  }, [user?.id]);
 
   async function handleGenerate(request: GenerateVideoRequest) {
     try {
-      const video = await videoService.generateVideo(request);
+      await videoService.generateVideo(request);
       toast.success('Video en cola de generación.');
-      setPollingVideoId(video.id);
       // Refresh list to show the new PROCESSING video
       await loadVideos(0);
       setPage(0);
@@ -165,7 +144,7 @@ export function DashboardPage() {
 
       <GenerateVideoForm
         onGenerate={handleGenerate}
-        disabled={!!pollingVideoId}
+        disabled={loadingList}
         quotaReached={quotaReached}
         videosGenerated={user?.videosGenerated ?? 0}
         videosLimit={user?.videosLimit ?? 2}

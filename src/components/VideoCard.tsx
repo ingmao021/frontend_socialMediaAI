@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { VideoPlayer } from './VideoPlayer';
 import { videoService } from '../services/videoService';
+import { useVideoPolling } from '../hooks/useVideoPolling';
 import type { VideoResponse } from '../types/video.types';
 
 interface VideoCardProps {
@@ -25,8 +26,27 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
   const [currentVideo, setCurrentVideo] = useState<VideoResponse>(video);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentVideo(video);
   }, [video]);
+
+  useVideoPolling({
+    videoId: currentVideo.status === 'PROCESSING' ? currentVideo.id : null,
+    onComplete: (signedUrl) => {
+      setCurrentVideo((prev) => ({
+        ...prev,
+        status: 'COMPLETED',
+        signedUrl,
+      }));
+    },
+    onFailed: (errorMessage) => {
+      setCurrentVideo((prev) => ({
+        ...prev,
+        status: 'FAILED',
+        errorMessage,
+      }));
+    },
+  });
 
   useEffect(() => {
     const checkAndRefreshUrl = async () => {
@@ -42,13 +62,24 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
     checkAndRefreshUrl();
   }, [currentVideo.status, currentVideo.signedUrlExpiresAt, currentVideo.id]);
 
+  const forceRefreshUrl = async () => {
+    if (currentVideo.status === 'COMPLETED') {
+      try {
+        const updatedVideo = await videoService.getVideo(currentVideo.id);
+        setCurrentVideo(updatedVideo);
+      } catch (err) {
+        console.error('Error forcing video URL refresh', err);
+      }
+    }
+  };
+
   const statusCfg = STATUS_CONFIG[currentVideo.status];
 
   return (
     <div className="video-card glass-card">
       <div className="video-card-preview">
         {currentVideo.status === 'COMPLETED' && currentVideo.signedUrl ? (
-          <VideoPlayer src={currentVideo.signedUrl} />
+          <VideoPlayer src={currentVideo.signedUrl} onNetworkError={forceRefreshUrl} />
         ) : currentVideo.status === 'PROCESSING' ? (
           <div className="video-card-processing">
             <div className="spinner" />

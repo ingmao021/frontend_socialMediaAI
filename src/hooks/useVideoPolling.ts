@@ -6,7 +6,7 @@ import axios from 'axios';
 export interface UseVideoPollingOptions {
   videoId: string | null;
   intervalMs?: number;   // default 10000
-  timeoutMs?: number;    // default 720000 (12 min)
+  timeoutMs?: number;    // default 1200000 (20 min)
   onComplete?: (signedUrl: string) => void;
   onFailed?: (errorMessage: string) => void;
 }
@@ -24,7 +24,7 @@ export function useVideoPolling(
   const {
     videoId,
     intervalMs = 10000,
-    timeoutMs = 720_000,
+    timeoutMs = 1200000,
     onComplete,
     onFailed,
   } = options;
@@ -59,10 +59,13 @@ export function useVideoPolling(
     }
 
     // Fresh start for a new videoId
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setStatus(null);
+     
     setSignedUrl(null);
+     
     setError(null);
+     
     setIsPolling(true);
 
     let intervalHandle: ReturnType<typeof setInterval> | null = null;
@@ -115,15 +118,8 @@ export function useVideoPolling(
             return;
           }
 
-          // Si es un error del servidor (5xx) paramos el polling y notificamos
-          if (statusCode && statusCode >= 500 && statusCode < 600) {
-            cleanup();
-            setIsPolling(false);
-            setError('Error en el servidor al consultar el estado del video. Intentá nuevamente más tarde.');
-            onFailedRef.current?.('Error en el servidor al consultar el estado del video.');
-            console.error('[video-poll] Server error while polling video status:', err);
-            return;
-          }
+          // Eliminar el comportamiento que detenía el polling por errores 5xx
+          // El polling debe continuar ante fallas intermitentes del servidor
         }
 
         // Otros errores de red/transitorios: loguear y seguir reintentando hasta timeout

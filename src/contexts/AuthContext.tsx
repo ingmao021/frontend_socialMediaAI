@@ -15,8 +15,10 @@ export interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,15 +27,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = authService.getToken();
     if (token) {
-      userService
-        .getMe()
-        .then(setUser)
-        .catch(() => {
-          // Token is invalid or expired — clean up silently
-          authService.clearToken();
-        })
+      authService
+        .getCurrentUser()
+        .then((userData) => setUser(userData))
+        .catch(() => authService.clearToken())
         .finally(() => setLoading(false));
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false);
     }
   }, []);
