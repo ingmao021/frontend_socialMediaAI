@@ -180,6 +180,10 @@ export function DashboardPage() {
                 key={video.id}
                 video={video}
                 onDelete={handleDelete}
+                onVideoCompleted={() => {
+                  // Refrescar la lista cuando un video complete
+                  void loadVideos(0);
+                }}
               />
             ))}
           </div>

@@ -5,7 +5,7 @@ import axios from 'axios';
 
 export interface UseVideoPollingOptions {
   videoId: string | null;
-  intervalMs?: number;   // default 10000
+  intervalMs?: number;   // default 5000 (PRD: polling cada 5s)
   timeoutMs?: number;    // default 1500000 (25 min)
   onComplete?: (signedUrl: string) => void;
   onFailed?: (errorMessage: string) => void;
@@ -23,7 +23,7 @@ export function useVideoPolling(
 ): UseVideoPollingResult {
   const {
     videoId,
-    intervalMs = 10000,
+    intervalMs = 5000,  // PRD: polling cada 5s
     timeoutMs = 1500000,
     onComplete,
     onFailed,

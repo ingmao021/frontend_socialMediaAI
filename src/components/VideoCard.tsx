@@ -7,6 +7,7 @@ import type { VideoResponse } from '../types/video.types';
 interface VideoCardProps {
   video: VideoResponse;
   onDelete: (videoId: string) => void;
+  onVideoCompleted?: (videoId: string) => void;
 }
 
 const STATUS_CONFIG = {
@@ -22,7 +23,7 @@ const isSignedUrlExpired = (expiresAt: string | null | undefined): boolean => {
   return Date.now() > expiry.getTime() - margin;
 };
 
-export function VideoCard({ video, onDelete }: VideoCardProps) {
+export function VideoCard({ video, onDelete, onVideoCompleted }: VideoCardProps) {
   const [currentVideo, setCurrentVideo] = useState<VideoResponse>(video);
 
   useEffect(() => {
@@ -38,6 +39,8 @@ export function VideoCard({ video, onDelete }: VideoCardProps) {
         status: 'COMPLETED',
         signedUrl,
       }));
+      // Notificar al padre para que refresque la lista de videos
+      onVideoCompleted?.(currentVideo.id);
     },
     onFailed: (errorMessage) => {
       setCurrentVideo((prev) => ({
