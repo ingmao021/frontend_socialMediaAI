@@ -29,16 +29,18 @@ export function YouTubeConnectedPage() {
 
   // Auto-redirigir al dashboard después de 4 segundos
   useEffect(() => {
+    const timer = setTimeout(() => {
+      navigate('/dashboard', { replace: true });
+    }, 4000);
+
     const interval = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(interval);
-          navigate('/dashboard', { replace: true });
-        }
-        return c - 1;
-      });
+      setCountdown((c) => c - 1);
     }, 1000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [navigate]);
 
   return (
